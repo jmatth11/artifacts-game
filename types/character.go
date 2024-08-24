@@ -200,7 +200,7 @@ type FightResponse struct {
 type BankResponse struct {
   ServerCodeInfo
 	Cooldown    Cooldown    `json:"cooldown"`
-  Item       []Item
+  Item       Item `json:"item"`
 	Bank       []SimpleItem       `json:"bank"`
 	Character   Character   `json:"character"`
 }

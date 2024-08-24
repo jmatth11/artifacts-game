@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 
@@ -74,7 +73,6 @@ func Get(client types.Client, path string, params interface{}) (types.Response, 
   }
   if len(queryParams) > 0 {
     fullPath = fmt.Sprintf("%s?%s", fullPath, queryParams.Encode())
-    log.Printf("GET with params: %s\n", fullPath)
   }
   req, err := http.NewRequest(http.MethodGet, fullPath, nil)
   if err != err {

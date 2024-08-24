@@ -1,7 +1,6 @@
 package logic
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -32,17 +31,16 @@ func waitForCooldown(cm *types.CharacterManager) {
 }
 
 func UpdateCharacterDetails(cm *types.CharacterManager) error {
+  waitForCooldown(cm)
   resp, err := actions.CharacterDetails(cm.Client)
   if err != nil {
     return err
   }
   if resp.Type == types.ServerCodeOK {
     cm.Character = resp.Data
-    cm.Cooldown.TotalSeconds = 0
-    cm.Cooldown.StartedAt = types.ZeroTime
     cm.SetState(types.GameStateMove)
   } else {
-    log.Printf("update character response code: %d\n", resp.Type)
+    log.Printf("Client %s: update character response code: %d\n", cm.Client.Name, resp.Type)
     cm.SetState(types.GameStateNoAction)
   }
   return nil
@@ -62,11 +60,10 @@ func MoveToSpot(cm *types.CharacterManager, task types.Event) error {
   }
   if resp.Type == types.ServerCodeNotFound {
     // TODO pull out as error type
-    return errors.New("resource not found")
+    return fmt.Errorf("client %s: resource not found", cm.Client.Name)
   }
   var foundSpot types.MapGetAllData
   for _, spot := range resp.Data {
-    log.Printf("spot: %s, %s, %s\n", spot.Name, spot.Content.Code, spot.Content.Type)
     if spot.Content.Code == task.DetailTask {
       foundSpot = spot
       break
@@ -77,9 +74,11 @@ func MoveToSpot(cm *types.CharacterManager, task types.Event) error {
     return err
   }
   if moveResp.Type == types.ServerCodeOK {
-    log.Printf("moveResp.Cooldown: %v\n", moveResp.Cooldown)
+    log.Printf("Client %s: moved to (%d, %d)\n", cm.Client.Name, foundSpot.X, foundSpot.Y)
     cm.Character = moveResp.Character
     cm.Cooldown = moveResp.Cooldown
+  } else if moveResp.Type == types.ServerCodeNotFound {
+    cm.SetState(types.GameStateNoAction)
   }
   switch task.Task {
     case types.ResourceContentType:
@@ -88,9 +87,6 @@ func MoveToSpot(cm *types.CharacterManager, task types.Event) error {
       cm.SetState(types.GameStateFarm)
     case types.BankContentType:
       cm.SetState(types.GameStateDeposit)
-  }
-  if moveResp.Type != types.ServerCodeCharacterAlreadyAtPosition {
-    cm.SetState(types.GameStateNoAction)
   }
   return nil
 }
@@ -141,6 +137,7 @@ func UpgradeFarming(cm *types.CharacterManager, task *types.Event) error {
         item := resp.Data[0]
         task.DetailTask = item.Code
       } else {
+        log.Printf("Client %s: upgrade code errored, no action\n", cm.Client.Name)
         cm.SetState(types.GameStateNoAction)
       }
     }
@@ -158,7 +155,6 @@ func FarmResources(cm *types.CharacterManager, task types.Event) error {
       if err != nil {
         return err
       }
-      log.Printf("Farm response type: %d\n", fightResp.Type)
       if fightResp.Type == types.ServerCodeOK {
         cm.Character = fightResp.Character
         cm.Cooldown = fightResp.Cooldown
@@ -167,6 +163,8 @@ func FarmResources(cm *types.CharacterManager, task types.Event) error {
         cm.SetState(types.GameStateMove)
       } else if fightResp.Type == types.ServerCodeInventoryFull {
         cm.SetState(types.GameStateDeposit)
+      } else {
+        log.Printf("Client %s: gather monster error resp code %d\n", cm.Client.Name, fightResp.Type)
       }
     }
     case types.ResourceContentType: {
@@ -174,14 +172,18 @@ func FarmResources(cm *types.CharacterManager, task types.Event) error {
       if err != nil {
         return err
       }
-      log.Printf("Farm response type: %d\n", gatherResp.Type)
       if gatherResp.Type == types.ServerCodeOK {
         cm.Character = gatherResp.Character
         cm.Cooldown = gatherResp.Cooldown
+        log.Printf("Client %s: gather XP %d\n", cm.Client.Name, gatherResp.Details.Xp)
       } else if gatherResp.Type == types.ServerCodeResourceNotFoundOnMap {
+        log.Printf("Client %s: gather resource not found\n", cm.Client.Name)
         cm.SetState(types.GameStateMove)
       } else if gatherResp.Type == types.ServerCodeInventoryFull {
+        log.Printf("Client %s: gather inventory full\n", cm.Client.Name)
         cm.SetState(types.GameStateDeposit)
+      } else {
+        log.Printf("Client %s: gather resource error resp code %d\n", cm.Client.Name, gatherResp.Type)
       }
     }
   }
@@ -196,7 +198,12 @@ func DeposityInventory(cm *types.CharacterManager) error {
     return err
   }
   if moveResp.Type == types.ServerCodeOK {
+    cm.Character = moveResp.Character
+    cm.Cooldown = moveResp.Cooldown
     for _, item := range moveResp.Character.Inventory {
+      if item.Quantity == 0 {
+        continue
+      }
       waitForCooldown(cm)
       depositItem := types.SimpleItem {
         Code: item.Code,
@@ -210,7 +217,7 @@ func DeposityInventory(cm *types.CharacterManager) error {
         cm.Character = bankResp.Character
         cm.Cooldown = bankResp.Cooldown
       } else if bankResp.Type == types.ServerCodeInsufficientQuantity {
-        log.Printf("Insufficient quantity: Client %s, Item %s\n", cm.Client.Name, item.Code)
+        log.Printf("Client %s: Insufficient quantity: Item %s\n", cm.Client.Name, item.Code)
       }
     }
     cm.SetState(types.GameStateUpgrade)

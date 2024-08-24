@@ -69,7 +69,7 @@ func CharacterDetails(c types.Client) (types.CharacterResponse, error) {
 }
 
 func DepositItemToBank(c types.Client, item types.SimpleItem) (types.BankResponse, error) {
-  url := fmt.Sprintf("my/%s/action/fight", c.Name)
+  url := fmt.Sprintf("my/%s/action/bank/deposit", c.Name)
   result, err := helpers.Post(c, url, item)
   var resp types.BankResponse
   if err != nil {

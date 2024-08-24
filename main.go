@@ -15,7 +15,7 @@ func character_loop(c chan bool, cm *types.CharacterManager, task types.Event) {
   for {
     switch cm.State {
       case types.GameStateLoad: {
-        log.Printf("Loading Client %s\n", cm.Client.Name)
+        log.Printf("Client %s: Loading\n", cm.Client.Name)
         err := logic.UpdateCharacterDetails(cm)
         if err != nil {
           log.Println(err)
@@ -23,7 +23,7 @@ func character_loop(c chan bool, cm *types.CharacterManager, task types.Event) {
         }
       }
       case types.GameStateMove: {
-        log.Printf("moving Client %s\n", cm.Client.Name)
+        log.Printf("Client %s: Moving\n", cm.Client.Name)
         err := logic.MoveToSpot(cm, task)
         if err != nil {
           log.Println(err)
@@ -31,7 +31,7 @@ func character_loop(c chan bool, cm *types.CharacterManager, task types.Event) {
         }
       }
       case types.GameStateFarm: {
-        log.Printf("Farming Client %s\n", cm.Client.Name)
+        log.Printf("Client %s: Farming\n", cm.Client.Name)
         err := logic.FarmResources(cm, task)
         if err != nil {
           log.Println(err)
@@ -39,7 +39,7 @@ func character_loop(c chan bool, cm *types.CharacterManager, task types.Event) {
         }
       }
       case types.GameStateDeposit: {
-        log.Printf("Deposit Client %s\n", cm.Client.Name)
+        log.Printf("Client %s: Bank Deposit\n", cm.Client.Name)
         err := logic.DeposityInventory(cm)
         if err != nil {
           log.Println(err)
@@ -47,7 +47,7 @@ func character_loop(c chan bool, cm *types.CharacterManager, task types.Event) {
         }
       }
       case types.GameStateUpgrade: {
-        log.Printf("upgrade Client %s\n", cm.Client.Name)
+        log.Printf("Client %s: Task Upgrade\n", cm.Client.Name)
         err := logic.UpgradeFarming(cm, &task)
         if err != nil {
           log.Println(err)
@@ -55,13 +55,13 @@ func character_loop(c chan bool, cm *types.CharacterManager, task types.Event) {
         }
       }
       case types.GameStateNoAction: {
-        log.Printf("No action Client %s\n", cm.Client.Name)
+        log.Printf("Client %s: No Action\n", cm.Client.Name)
         // wait for new action
         task = <-cm.Event
       }
       case types.GameStateRetry: {
         // wait 60 seconds then retry
-        log.Printf("game state retrying: Player %s\n", cm.Client.Name)
+        log.Printf("Client %s: Retrying in 60s because of error.\n", cm.Client.Name)
         time.Sleep(time.Second * 60)
         cm.State = types.GameStateLoad
       }
