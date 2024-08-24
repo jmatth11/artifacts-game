@@ -19,8 +19,15 @@ func Move(c types.Client, x, y int) (types.MoveResponse, error) {
   if err != nil {
     return resp, err
   }
-  if err := json.Unmarshal(result, &resp); err != nil {
-    return resp, err
+  if result.Type == types.ServerCodeOK {
+    a := struct {
+      Data types.MoveResponse `json:"data"`
+    }{}
+    if err := json.Unmarshal(result.Data, &a); err != nil {
+      return resp, err
+    }
+    resp = a.Data
   }
+  resp.Type = result.Type
   return resp, nil
 }

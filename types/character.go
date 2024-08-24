@@ -2,6 +2,13 @@ package types
 
 import "time"
 
+type FightResult string
+
+const (
+  FightResultWin = FightResult("win")
+  FightResultLose = FightResult("lose")
+)
+
 type MoveRequest struct {
   X int `json:"x"`
   Y int `json:"y"`
@@ -16,8 +23,8 @@ type Cooldown struct {
 }
 
 type Content struct {
-  Type string `json:"type"`
-  Code string `json:"code"`
+  Type MapContentType `json:"type"`
+  Code CodeName  `json:"code"`
 }
 
 type Destination struct {
@@ -31,12 +38,12 @@ type Destination struct {
 // Details contains experience points and items.
 type Details struct {
 	Xp    int     `json:"xp"`
-	Items []Item  `json:"items"`
+	Items []SimpleItem  `json:"items"`
 }
 
-// Item represents an individual item with a code and quantity.
-type Item struct {
-	Code     string `json:"code"`
+// SimpleItem represents an individual item with a code and quantity.
+type SimpleItem struct {
+	Code     CodeName `json:"code"`
 	Quantity int    `json:"quantity"`
 }
 
@@ -118,19 +125,87 @@ type Character struct {
 // InventoryItem represents an item in the character's inventory.
 type InventoryItem struct {
 	Slot     int    `json:"slot"`
-	Code     string `json:"code"`
+  Code     CodeName `json:"code"`
 	Quantity int    `json:"quantity"`
 }
 
+// Fight represents the structure of a fight result.
+type Fight struct {
+	Xp                  int                `json:"xp"`
+	Gold                int                `json:"gold"`
+	Drops               []SimpleItem             `json:"drops"`
+	Turns               int                `json:"turns"`
+	MonsterBlockedHits  BlockedHits        `json:"monster_blocked_hits"`
+	PlayerBlockedHits   BlockedHits        `json:"player_blocked_hits"`
+	Logs                []string           `json:"logs"`
+	Result              FightResult        `json:"result"`
+}
+
+// BlockedHits contains hit information for a specific type of attack.
+type BlockedHits struct {
+	Fire  int `json:"fire"`
+	Earth int `json:"earth"`
+	Water int `json:"water"`
+	Air   int `json:"air"`
+	Total int `json:"total"`
+}
+
+// Item represents the structure of an item with its details and crafting information.
+type Item struct {
+	Name        string   `json:"name"`
+	Code        CodeName   `json:"code"`
+	Level       int      `json:"level"`
+	Type        string   `json:"type"`
+	Subtype     string   `json:"subtype"`
+	Description string   `json:"description"`
+	Effects     []Effect `json:"effects"`
+	Craft       Craft    `json:"craft"`
+}
+
+// Effect represents the effect of an item, with a name and value.
+type Effect struct {
+	Name  string `json:"name"`
+	Value int    `json:"value"`
+}
+
+// Craft represents crafting information for an item, including required skill, level, and materials.
+type Craft struct {
+	Skill     string  `json:"skill"`
+	Level     int     `json:"level"`
+	Items     []SimpleItem `json:"items"`
+	Quantity  int     `json:"quantity"`
+}
+
 type MoveResponse struct {
-  Cooldown Content `json:"cooldown"`
+  ServerCodeInfo
+  Cooldown Cooldown `json:"cooldown"`
   Destination Destination `json:"destination"`
   Character Character `json:"character"`
 }
 
 type GatheringResponse struct {
+  ServerCodeInfo
 	Cooldown    Cooldown    `json:"cooldown"`
 	Details     Details     `json:"details"`
 	Character   Character   `json:"character"`
 }
 
+type FightResponse struct {
+  ServerCodeInfo
+	Cooldown    Cooldown    `json:"cooldown"`
+	Fight       Fight       `json:"fight"`
+	Character   Character   `json:"character"`
+}
+
+type BankResponse struct {
+  ServerCodeInfo
+	Cooldown    Cooldown    `json:"cooldown"`
+  Item       []Item
+	Bank       []SimpleItem       `json:"bank"`
+	Character   Character   `json:"character"`
+}
+
+type CharacterResponse struct {
+  ServerCodeInfo
+  Data Character `json:"data"`
+}

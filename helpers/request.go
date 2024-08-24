@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 
@@ -18,44 +19,47 @@ func addHeaders(client types.Client, req *http.Request) {
   req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", client.Token))
 }
 
-func executeRequest(req *http.Request) ([]byte, error) {
+func executeRequest(req *http.Request) (types.Response, error) {
+  var result types.Response
   resp, err := http.DefaultClient.Do(req)
   if err != nil {
-    return nil, err
+    return result, err
   }
   defer resp.Body.Close()
-  result, err := io.ReadAll(resp.Body)
+  body, err := io.ReadAll(resp.Body)
   if err != nil {
-    return nil, err
+    return result, err
   }
+  result.Data = body
+  result.Type = types.ServerCode(resp.StatusCode)
   return result, nil
 }
 
-func Post(client types.Client, path string, body interface{}) ([]byte, error) {
+func Post(client types.Client, path string, body interface{}) (types.Response, error) {
   var bodyData = []byte{}
   var err error
   if body != nil {
     bodyData, err = json.Marshal(body)
     if err != nil {
-      return nil, err
+      return types.Response{}, err
     }
     fmt.Println(string(bodyData))
   }
   responseBody := bytes.NewBuffer(bodyData)
   fullPath,err := url.JoinPath(baseURL, path)
   if err != nil {
-    fmt.Println(err)
+    return types.Response{}, nil
   }
   req, err := http.NewRequest(http.MethodPost, fullPath, responseBody)
   if err != err {
-    return nil, err
+    return types.Response{}, err
   }
   addHeaders(client, req)
   req.Header.Add("Content-Type", "application/json")
   return executeRequest(req)
 }
 
-func Get(client types.Client, path string, params interface{}) ([]byte, error) {
+func Get(client types.Client, path string, params interface{}) (types.Response, error) {
   queryParams := url.Values{}
   objMap := make(map[string]string)
   if params != nil {
@@ -66,12 +70,15 @@ func Get(client types.Client, path string, params interface{}) ([]byte, error) {
   }
   fullPath,err := url.JoinPath(baseURL, path)
   if err != nil {
-    return nil, err
+    return types.Response{}, err
   }
-  fullPath = fmt.Sprintf("%s?%s", fullPath, queryParams.Encode())
+  if len(queryParams) > 0 {
+    fullPath = fmt.Sprintf("%s?%s", fullPath, queryParams.Encode())
+    log.Printf("GET with params: %s\n", fullPath)
+  }
   req, err := http.NewRequest(http.MethodGet, fullPath, nil)
   if err != err {
-    return nil, err
+    return types.Response{}, err
   }
   addHeaders(client, req)
   return executeRequest(req)
